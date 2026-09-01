@@ -569,6 +569,80 @@ voice and the tester prompt in the tester's; the role switch is the point.
 
 ---
 
+## Tooling: which surface each role uses, and where skills live
+
+### The Product Owner's surface — Code mode, not Cowork
+
+An intent is a **repo artifact**: it must land as `intent/<slug>/intent.md`
+on a branch, with a PR, next to the template it was filled from. Every later
+stage reads it from the repo — `/spec`, REVIEW.md Pass 3, the maintain
+loop's dedupe scan of `intent/**`. That makes the choice of surface a git
+question, not a UI-preference question:
+
+- **Cowork** (Claude Desktop) is a folder-and-connectors surface. It is the
+  right place for the step *before* the intent — pulling evidence together
+  from Slack, a Sentry link, a ticket export, an analytics sheet — but it is
+  not built around branches and PRs, and it runs its own skill library
+  (uploaded skills / plugins), not the repo's `.claude/skills/`. Pointing it
+  at a clone yields a file on disk, not a committed artifact under review,
+  and `/intent` isn't loaded there.
+- **Code mode** (Claude Code — Desktop app, terminal, or the web) loads
+  `CLAUDE.md`/`AGENTS.md` and `.claude/skills/` automatically, so `/intent`
+  just works, and it can branch, commit and open the PR. Nothing in `/intent`
+  requires reading code: it interviews, fills the template, shows a draft,
+  writes one markdown file. The PO types a prompt; that's the whole job.
+
+Three PO paths, in order of recommendation:
+
+| Path | What the PO needs | How it runs |
+|---|---|---|
+| **1. Claude Code on the web / Desktop cloud session** | a browser and repo access | `/intent …` in a GitHub-connected session; the result comes back as a branch + PR to share. Plan and accept-edits modes are available; `/intent` only ever writes into `intent/`. |
+| **2. GitHub only — zero tooling** | a GitHub account | Write an issue with problem, evidence and desired outcome, then comment `@claude run /intent on this issue and open a PR against develop`. The mention responder ([`claude.yml`](../.github/workflows/claude.yml)) runs on a checkout with the repo skills loaded — headless mode expands `/skill-name` in the prompt — and opens the PR. The PO also does the *accept* step there: review the intent PR, merge. |
+| **3. Desktop Code mode on a local clone** | git + a clone | same as 1, locally. Fine for a technical PO. |
+
+The practical split: **Cowork for evidence-gathering, Code/GitHub for the
+artifact.** Draft the problem statement in Cowork with connectors, then paste
+it into `/intent` (path 1) or an issue (path 2).
+
+The Engineer and Tester use Code mode throughout; the Tester's preview
+verification (Stage 5) and the PO's triage of maintain-loop PRs (Stage 6)
+happen on GitHub.
+
+### Where the skills live — in the repo, not a marketplace plugin
+
+Keep `/intent` and `/spec` in `.claude/skills/` of each repo that runs the
+loop:
+
+- **They are coupled to repo files.** `/intent` fills
+  `intent/_templates/intent.md`; `/spec`'s mandatory constraint pass has a
+  *repo-specific* mapping table of which policy skill to read for which
+  domain. A plugin can't carry that table without going stale the first time
+  the project adds a skill.
+- **They are versioned with the loop.** Changes go through skill-maintenance
+  and are gated by config-evals CI. A plugin is a per-user install, so people
+  (and CI) can run different skill versions against the same templates —
+  exactly the drift the pipeline exists to prevent.
+- **CI needs them.** Path 2 above and every headless run load skills from the
+  checkout; a plugin would have to be installed into each CI job separately.
+- **Zero install** for contributors: clone and it's there.
+
+Where a plugin *does* make sense:
+
+- **Bootstrapping many repos** — publish the template itself as a plugin
+  whose job is to copy the files in (skills, templates, workflows). After
+  that, the repo copy is the source of truth. That's distribution, not
+  runtime.
+- **A Cowork-side helper for the PO** — a small plugin skill running the same
+  interview and producing intent *text* to paste into an issue. Only if the
+  PO genuinely can't use path 1 or 2; otherwise it's a second copy of the
+  interview to keep aligned.
+
+Rule of thumb: **skills that read or write repo files live in the repo;
+skills that only shape a conversation can be plugins.** `/intent` and
+`/spec` are both the first kind.
+
+---
+
 ## Anti-patterns
 
 - **Pasting the spec into chat** instead of `@`-referencing the file. The
