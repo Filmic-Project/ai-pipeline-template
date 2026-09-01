@@ -130,6 +130,13 @@ require.
 
 ## Using the pipeline day-to-day
 
+> **Looking for what to actually type?** [`docs/PROMPTING.md`](docs/PROMPTING.md)
+> has concrete prompts for every stage — including how to trigger planning
+> and implementation in Build (`/plan`, `/goal`, `@claude` in CI), whether to
+> reference the intent/spec files (yes, always, by `@file`), which model and
+> effort level to use at each stage, and how Product Owner / Engineer /
+> Tester roles map onto the stages and who triggers what.
+
 ### Feature work
 
 ```mermaid
