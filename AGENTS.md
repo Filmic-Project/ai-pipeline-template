@@ -68,6 +68,9 @@ skill surfaces — and never write a `SKILL.md`/`RULE.md` without explicit appro
 ## Observability
 
 <!-- TODO(template): if you use Sentry: every new/modified `catch` reports via
-     Sentry.captureException — EXCEPT standalone CI scripts, which never
-     initialize the SDK and must fail loudly via exit code + workflow
-     notification instead. -->
+     Sentry.captureException — EXCEPT in a process that never calls
+     Sentry.init (typical for standalone CI scripts), where a capture is a
+     silent no-op: fail loudly via exit code + a failure-notification step in
+     EVERY job that runs the script. The exemption hinges on the missing
+     init, not on the directory — a script that does init Sentry reports in
+     full. -->

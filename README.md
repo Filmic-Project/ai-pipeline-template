@@ -210,9 +210,12 @@ template, but worth knowing:
 - **Per-run branch names** in the maintain loop: a fixed branch would make
   the next breach *replace* the open PR's body, losing the permalinks the
   detector dedupes on.
-- **Standalone CI scripts never initialize Sentry** — don't add
-  `Sentry.captureException` to them for "compliance"; it sends nothing. Fail
-  loudly via exit code + a workflow notification step.
+- **A capture in a process that never calls `Sentry.init` is a no-op** —
+  don't add `Sentry.captureException` to standalone CI scripts for
+  "compliance"; it sends nothing. Fail loudly via exit code + a
+  failure-notification step in **every** job that runs the script (a
+  notification only in a downstream job never fires when the monitor itself
+  crashes). A script that does init Sentry reports in full.
 - **Usage limits**: CI reviews share your Pro/Max usage windows with local
   sessions. The workflows mitigate with concurrency-cancel, draft/bot/label
   skips, and Sonnet (not Opus). If CI starves local work, switch the review

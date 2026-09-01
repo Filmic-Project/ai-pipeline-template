@@ -56,6 +56,23 @@ jobs:
           name: breach-report
           path: breach.json
 
+      # The diagnose job's notification steps never run when detect itself
+      # crashes (diagnose is skipped without a breach output), so detect
+      # carries its own failure alert — the detector script deliberately has
+      # no in-process error reporting and relies on this step.
+      # TODO(template): swap for your notification channel, but keep SOME
+      # failure alert on this job — without it a broken monitor fails silently.
+      - name: Slack Notification on Failure
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL || '#alerts' }}
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: '🚨 Sentry maintain loop DETECT job failed (band monitor crashed — breaches may be going unseen)'
+          SLACK_TITLE: 'GitHub Actions Failure'
+          SLACK_USERNAME: 'GitHub Actions'
+
   diagnose:
     needs: detect
     if: needs.detect.outputs.breach == 'true' || inputs.force
