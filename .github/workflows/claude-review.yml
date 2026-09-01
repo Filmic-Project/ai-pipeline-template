@@ -1,0 +1,63 @@
+name: Claude PR Review
+
+# Automatic review of every non-draft PR into the integration branch, driven
+# by REVIEW.md. Coexists with other review bots and with claude.yml (the
+# @claude mention responder, which stays the "fix it" channel). Skip
+# mechanically-generated PRs with the `skip-claude-review` label or a
+# chore/sync-* / maintain/* branch name — both guards, because labels land in
+# the same API call for peter-evans PRs but the branch guard is the race-free
+# one.
+#
+# NOTE: on the bootstrap PR that ADDS this workflow, the action's
+# workflow-validation guard skips the run (the file differs from the default
+# branch) — the first real review happens on the first PR after merge.
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+    branches: [main] # TODO(template): your integration branch
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: |
+      github.event.pull_request.draft == false &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-claude-review') &&
+      !startsWith(github.head_ref, 'chore/sync-') &&
+      !startsWith(github.head_ref, 'maintain/') &&
+      github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+          use_sticky_comment: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Read REVIEW.md at the repository root and perform exactly the
+            review passes it defines, with its severity ranking, exclusions,
+            and recurring-findings routing. Post inline comments for
+            BLOCKER/HIGH/MEDIUM findings and one summary comment. Do not
+            modify any files.
+          claude_args: |
+            --model claude-sonnet-4-5
+            --max-turns 30
+            --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api repos/*/pulls/*/comments*),Bash(gh api repos/*/pulls/*/reviews*)"

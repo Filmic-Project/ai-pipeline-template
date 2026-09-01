@@ -1,0 +1,45 @@
+# Spec: <short feature name>
+
+- **Intent:** ./intent.md
+- **Date:** <yyyy-mm-dd>
+- **Status:** draft | accepted
+
+## Summary
+
+<Two or three sentences: what will be built, at what altitude.>
+
+## Acceptance criteria
+
+<Numbered. Each criterion independently checkable — a reviewer (human or the
+automated REVIEW.md Pass 3) must be able to answer met/unmet from the diff and
+a running session. No "should generally" language.>
+
+1. …
+2. …
+
+## Affected surfaces
+
+<Routes/pages, components, API routes, database collections/tables, workflows,
+external dashboards this touches.>
+
+## Policy constraints
+
+<Populated by the /spec skill's constraint pass: the applicable rules from the
+project's policy skills, each cited by skill name (and section number where
+the skill has one).>
+
+## Data / API contracts
+
+<New or changed shapes: request/response bodies, stored documents, event
+payloads. Omit if none.>
+
+## Test plan
+
+<Which verification applies: unit tests for which modules, type check,
+browser/UI verification (which routes), eval harnesses, e2e. Name the loop
+that must be green before "done".>
+
+## Out of scope
+
+<Explicit exclusions, carried over from the intent's non-goals plus anything
+discovered while speccing.>

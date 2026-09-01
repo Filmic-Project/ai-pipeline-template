@@ -1,0 +1,20 @@
+{
+  "name": "ai-pipeline-template",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tooling supporting an AI-native SDLC process — see README.md",
+  "scripts": {
+    "monitor:error-bands": "tsx --env-file-if-exists=.env.local scripts/monitor-error-bands.ts",
+    "ai:eval:config": "tsx eval/config/run.ts",
+    "test:types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "dotenv": "^17.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,74 @@
+name: Config Evals
+
+# Regression tests for the agent config: PRs that touch the instruction
+# files, skills, or the harness itself must keep the golden cases in
+# eval/config/cases.ts green. Each case is a real past correction; the runner
+# spawns headless `claude -p` sessions that load the config under test.
+#
+# One workflow, no paths filter: the job always runs and decides for itself
+# whether the diff touches config (a path-filtered required check would hang
+# unrelated PRs, and a paths-ignore "twin" fires alongside the real one on
+# mixed-path PRs, producing two same-named checks). Non-config PRs no-op in
+# seconds, so "Config Evals / evals" is always exactly one completed check
+# and safe to mark required.
+on:
+  pull_request:
+    branches: [main] # TODO(template): your integration branch
+  workflow_dispatch:
+
+concurrency:
+  group: config-evals-${{ github.event.pull_request.number || 'manual' }}
+  cancel-in-progress: true
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Detect config changes
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "config=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch — running evals."
+            exit 0
+          fi
+          CHANGED=$(gh pr diff ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} --name-only)
+          echo "$CHANGED"
+          # package.json deliberately NOT matched: dependency bumps would
+          # burn a full eval run for near-zero signal.
+          if echo "$CHANGED" | grep -qE '^(CLAUDE\.md|AGENTS\.md|\.claude/|\.agents/|eval/config/|\.github/workflows/config-evals\.yml)'; then
+            echo "config=true" >> "$GITHUB_OUTPUT"
+            echo "Config paths touched — running evals."
+          else
+            echo "config=false" >> "$GITHUB_OUTPUT"
+            echo "No config paths touched — skipping evals."
+          fi
+
+      - name: Checkout repository
+        if: steps.detect.outputs.config == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.detect.outputs.config == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.detect.outputs.config == 'true'
+        run: npm ci
+
+      - name: Install Claude Code CLI
+        if: steps.detect.outputs.config == 'true'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run config evals
+        if: steps.detect.outputs.config == 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: npm run ai:eval:config
