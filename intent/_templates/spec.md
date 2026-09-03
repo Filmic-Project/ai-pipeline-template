@@ -43,3 +43,12 @@ that must be green before "done".>
 
 <Explicit exclusions, carried over from the intent's non-goals plus anything
 discovered while speccing.>
+
+## Decisions
+
+<Dated amendments made after acceptance. When plan mode, implementation or
+review finds a criterion wrong, fix the criterion above AND record why here —
+the spec is what the automated review checks the diff against. Example:
+- 2026-09-03 — AC 2 cited `short_name`, which does not exist; reworded to
+  `participant.name` truncated with ellipsis (`shortCode` is a 3-letter code,
+  not a display name). Decided by: engineer (factual).>

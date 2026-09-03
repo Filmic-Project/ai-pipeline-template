@@ -237,6 +237,58 @@ and commit it on this branch before you change any other file.
 (Approve with *Yes, manually approve edits* if you want to watch that first
 write happen; *auto mode* if you trust the plan.)
 
+### When planning finds a spec defect
+
+The planning prompt above asks Claude to call out anything wrong in the spec
+*before* proposing an approach, so sooner or later plan mode will stop with a
+question like: *"AC 2 says prefer the API's `short_name` — but no such field
+exists; `Team` has `short_code`, a 3-letter code. Which do I render?"* That
+is the pipeline working. What matters is what you do next, because **the
+spec is what the automated review checks the diff against**: answer the
+question and move on, and you ship code built to an AC nobody believes
+anymore — Pass 3 then either cries wolf or rubber-stamps.
+
+**1. Classify the defect — it decides who answers.**
+
+| Kind | Example | Who decides | Where the decision goes |
+|---|---|---|---|
+| Factual error about the code | `short_name` doesn't exist, `short_code` does | Engineer, on the spot | amended AC + a `## Decisions` entry |
+| Ambiguous / conflicting behaviour | AC 4 and AC 7 can't both hold on mobile | Product Owner | amended AC; PO acknowledges on the PR |
+| Policy conflict | an AC wants what a policy skill forbids | Engineer, citing the skill | Policy constraints + Decisions |
+| The intent's outcome is wrong | the fix reveals the desired outcome is off | Product Owner — back to Stage 1 | `intent.md`, then re-run `/spec` |
+
+The `short_name` case is the first kind: the desired outcome (readable names
+in a fixed slot) is unchanged, only the field name was invented. Take the
+option that matches the AC's own reasoning, no PO round-trip needed.
+
+**2. Answer in the plan session, then make the spec fix the plan's first
+step.** Plan mode can't edit files, so don't try to fix the spec from inside
+it:
+
+```text
+Record this as a spec amendment. Step 1 of the plan must be: update
+@intent/<slug>/spec.md AC 2 to say "render participant.name on one line with
+text-overflow: ellipsis; full name in the link's aria-label — `short_name`
+does not exist; `Team.short_code` is a 3-letter code and is NOT used here",
+and add a dated entry under "## Decisions" explaining why. Commit that before
+any code change.
+```
+
+The amended spec lands in the same PR as the implementation, so the reviewer
+reads the corrected AC. `plan.md` carries the decision too.
+
+**3. Never let the plan work around the spec silently.** If a question is
+ever answered with "just do the sensible thing", the sensible thing still
+gets written into `spec.md`. A spec that drifts from the code is worse than
+no spec — it makes Pass 3 untrustworthy in both directions.
+
+**4. Feed the root cause back to Stage 2.** An AC citing a field that doesn't
+exist means `/spec` wrote it from the intent's prose without checking the
+code. The `spec` skill in this template therefore requires every name an AC
+cites to be grepped and cited as `file:line` — the check plan mode just did,
+one stage earlier. If your `/spec` runs keep producing defects of one kind,
+that is a skill patch, not a series of plan-mode questions.
+
 ### 3b · Trigger implementation — pick the mode that matches the risk
 
 **Option A — interactive, step by step.** Best for risky or unfamiliar code.
