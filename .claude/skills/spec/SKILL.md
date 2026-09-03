@@ -54,13 +54,20 @@ Create `spec.md` next to a given `intent/<slug>/intent.md`, from
    from the diff plus a running session. These are consumed verbatim by
    REVIEW.md Pass 3, so vague criteria produce vague reviews.
 
-   **Ground every name in the code.** Any field, type, prop, API route,
-   component, env var or table an AC cites must exist in the checkout: grep
-   it and put the `file:line` in the AC (e.g. "`Team.shortCode`,
-   `types/team.ts:41`"). If the intent's prose names something that does not
-   exist, do NOT carry the name into the AC — write what the code actually
-   has and note the substitution in the spec's Summary. The intent is written
-   by a person from memory; it is not a schema.
+   **Ground every EXISTING name in the code.** Any field, type, prop, API
+   route, component, env var or table an AC cites as already there must exist
+   in the checkout: grep it and put the `file:line` in the AC (e.g.
+   "`Team.shortCode`, `types/team.ts:6`"). If the intent's prose names
+   something that does not exist, do NOT carry the name into the AC as if it
+   did — write what the code actually has and note the substitution in the
+   spec's Summary. The intent is written by a person from memory; it is not
+   a schema.
+
+   Things the feature will CREATE are named freely — that is what the
+   Affected surfaces and Data / API contracts sections are for — but marked
+   so a reader can't mistake them for existing code: "`NEW`
+   `components/LiveTracker.tsx`", "`NEW` field `Fixture.trackerState`". The
+   rule is about which names claim to exist, not about how many exist.
 
    *(Origin: a spec whose AC 2 said "prefer the API's `short_name`" when the
    only real field was a 3-letter `short_code`. Plan mode had to stop and ask
@@ -93,8 +100,9 @@ commit before any code change"), and `plan.md` records the choice too.
 
 ## Don't
 
-- Don't cite a field, type, route or component in an AC that you did not
-  find in the codebase this session — grep first, cite `file:line`.
+- Don't cite a field, type, route or component in an AC as existing unless
+  you found it in the codebase this session — grep first, cite `file:line`;
+  mark what the feature will create as `NEW`.
 - Don't let a later stage build to an interpretation the spec doesn't state;
   amend the spec, then build.
 - Don't skip the constraint pass or cite a skill you didn't read this session.
