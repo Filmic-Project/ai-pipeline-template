@@ -103,12 +103,26 @@ function runCase(evalCase: ConfigEvalCase, model: string): CaseOutcome {
       failures.push(`missing /${pattern}/i`);
     }
   }
+  // `forbidCodeOnly` narrows the forbidden patterns to fenced code — the code
+  // the agent is proposing — so that citing an anti-pattern in prose to warn
+  // against it does not fail an otherwise correct answer. See cases.ts.
+  const forbidTarget = evalCase.forbidCodeOnly ? fencedCode(response) : response;
   for (const pattern of evalCase.mustNotMatch) {
-    if (new RegExp(pattern, 'i').test(response)) {
+    if (new RegExp(pattern, 'i').test(forbidTarget)) {
       failures.push(`forbidden /${pattern}/i matched`);
     }
   }
   return { evalCase, passed: failures.length === 0, failures, response };
+}
+
+/**
+ * The fenced code blocks of a markdown response, joined. Empty string when the
+ * response contains none — which is safe here because every `forbidCodeOnly`
+ * case also carries a `mustMatch` the prose-only answer would have to satisfy.
+ */
+function fencedCode(markdown: string): string {
+  const blocks = markdown.match(/```[\s\S]*?```/g);
+  return blocks ? blocks.join('\n') : '';
 }
 
 function main(): void {

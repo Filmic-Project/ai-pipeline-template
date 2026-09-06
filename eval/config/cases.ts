@@ -15,8 +15,18 @@
  * Assertions are case-insensitive regexes over the final response text —
  * deterministic, no LLM judge. Prefer mustNotMatch (guarding against the
  * wrong answer) over demanding exact phrasing; use severity 'warn' where
- * phrasing genuinely varies. Do NOT add a mustNotMatch for an anti-pattern a
- * correct answer would legitimately QUOTE while warning against it.
+ * phrasing genuinely varies.
+ *
+ * ⚠️ A `mustNotMatch` pattern that names an ANTI-PATTERN cannot tell "the
+ * agent recommended this" from "the agent named it in order to warn against
+ * it" — and a well-configured agent does the latter constantly, because the
+ * rule it just read says to. That makes such a case flakier the BETTER the
+ * config gets, which is exactly backwards. Set `forbidCodeOnly` on those
+ * cases: the patterns then run against fenced code blocks (what the agent is
+ * actually proposing you write) instead of its prose. `mustMatch` always runs
+ * against the whole response, so the pair still fails a genuine regression —
+ * an agent that recommends the anti-pattern stops producing the required
+ * `mustMatch` token.
  */
 
 export interface ConfigEvalCase {
@@ -27,6 +37,12 @@ export interface ConfigEvalCase {
   mustMatch: string[];
   /** Case-insensitive regexes the final response must NOT match (any fails). */
   mustNotMatch: string[];
+  /**
+   * Run `mustNotMatch` against fenced code blocks only, not the prose.
+   * For cases whose forbidden pattern is an anti-pattern a correct answer
+   * routinely CITES while warning against it — see the header note.
+   */
+  forbidCodeOnly?: boolean;
   /** must-pass gates the CI job; warn prints but does not fail the run. */
   severity: 'must-pass' | 'warn';
   /** Which config guards this — kept honest by the mutation test. */
@@ -68,6 +84,11 @@ export const CONFIG_EVAL_CASES: ConfigEvalCase[] = [
   //     'Show me the one-liner.',
   //   mustMatch: ['subDays'],
   //   mustNotMatch: ['86400', '24\\s*\\*\\s*60', 'getTime\\(\\)\\s*-'],
+  //   // A correct answer reaches for the anti-pattern to warn about it
+  //   // ("avoid `Date.now() - 7*24*60*60*1000`"), which tripped the forbidden
+  //   // regex and failed a RIGHT answer — after the same branch had passed this
+  //   // case four times in the preceding hour. See the header note.
+  //   forbidCodeOnly: true,
   //   severity: 'must-pass',
   //   guardedBy: 'AGENTS.md §Date handling + code-conventions skill',
   // },
