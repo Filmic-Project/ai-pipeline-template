@@ -137,6 +137,36 @@ conflicts with the intent (e.g. the intent wants an external link that policy
 says must be validated first), it flags it — **resolve that now**, in the
 spec, not at review time.
 
+**Four checks the skill runs before it shows you a draft.** You don't prompt
+for these — they are in the skill — but knowing them tells you what a draft
+that skipped one looks like:
+
+- Every name an AC cites *as already existing* is grepped and carries its
+  `file:line`; what the feature will create is marked `NEW`.
+- Absence claims from the intent ("no X exists yet, building it is in scope")
+  are checked with `find` over the asset directories, not a code grep — an
+  unreferenced asset has zero grep hits and sits on disk anyway.
+- A linked design canvas is read *first* and its values transcribed into the
+  criteria (see below).
+- A checkability pass over the finished ACs: each needs a manual observation
+  *and* a test.
+
+**If the intent links a design canvas**, say so — the skill reads it with
+`DesignSync`, not the `Artifact` tool, and needs consent once per session:
+
+```text
+/design-consent
+/spec intent/2026-09-save-after-expiry — the intent links a canvas at
+/design/p/<uuid>. Read it before writing criteria, transcribe its values
+into the ACs that consume them, and list anything the canvas contradicts or
+is silent on.
+```
+
+A canvas is non-normative and drifts: **Pass 3 reads `spec.md` and nothing
+else**, so a number that lives only on the canvas is invisible to review.
+Criteria added after the canvas was drawn are ones it is simply silent on —
+silence is absence of design, never assent.
+
 **Engineer follow-ups:**
 
 ```text
@@ -145,7 +175,9 @@ keep the client behaviour in this spec, move the API change to "Out of
 scope" with a pointer to a follow-up intent.
 ```
 
-**Tester's testability review** — the single most valuable prompt at this stage:
+**Tester's testability review** — the skill already ran its own checkability
+pass, so this is the independent second opinion, and it is what produces the
+*Test plan* section:
 
 ```text
 Read @intent/2026-09-save-after-expiry/spec.md. For each numbered acceptance
@@ -285,9 +317,10 @@ no spec — it makes Pass 3 untrustworthy in both directions.
 **4. Feed the root cause back to Stage 2.** An AC citing a field that doesn't
 exist means `/spec` wrote it from the intent's prose without checking the
 code. The `spec` skill in this template therefore requires every name an AC
-cites to be grepped and cited as `file:line` — the check plan mode just did,
-one stage earlier. If your `/spec` runs keep producing defects of one kind,
-that is a skill patch, not a series of plan-mode questions.
+cites to be grepped and cited as `file:line`, absence claims to be checked
+with `find`, and every AC to survive the checkability pass — the checks plan
+mode just did, one stage earlier. If your `/spec` runs keep producing defects
+of one kind, that is a skill patch, not a series of plan-mode questions.
 
 ### 3b · Trigger implementation — pick the mode that matches the risk
 
