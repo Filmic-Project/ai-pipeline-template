@@ -51,7 +51,7 @@ flowchart TB
 | Stage | Files | What they do |
 |---|---|---|
 | 1 · Plan | [`intent/`](intent/README.md), [`.claude/skills/intent/`](.claude/skills/intent/SKILL.md) | `/intent` captures a problem + success signal as a committed `intent.md` |
-| 2 · Design | [`intent/_templates/spec.md`](intent/_templates/spec.md), [`.claude/skills/spec/`](.claude/skills/spec/SKILL.md) | `/spec` writes numbered acceptance criteria and distills your policy skills into constraints |
+| 2 · Design | [`intent/_templates/spec.md`](intent/_templates/spec.md), [`.claude/skills/spec/`](.claude/skills/spec/SKILL.md) | `/spec` writes numbered acceptance criteria and distills your policy skills into constraints — grounding every name it cites in the code, reading a linked design canvas first, and running a checkability pass over the finished ACs |
 | 3 · Build | [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), [`.claude/skills/_template/`](.claude/skills/_template/SKILL.md) | Always-loaded instructions + the skill library that carries house rules between sessions |
 | 4 · Test | [`eval/config/`](eval/config/cases.ts), [`.github/workflows/config-evals.yml`](.github/workflows/config-evals.yml) | Regression tests for the agent *config*: PRs touching `CLAUDE.md`/`AGENTS.md`/`.claude/**` replay golden prompts headlessly |
 | 5 · Deploy | [`REVIEW.md`](REVIEW.md), [`.github/workflows/claude-review.yml`](.github/workflows/claude-review.yml), [`claude.yml`](.github/workflows/claude.yml) | Automatic 3-pass review of every PR + the `@claude` mention responder as the fix channel |
@@ -159,6 +159,28 @@ sequenceDiagram
 1. `/intent` → review the draft → accept.
 2. `/spec` → it reads the relevant policy skills and writes acceptance
    criteria. Resolve any flagged policy conflicts now, not at review time.
+   Four things it does before handing you the draft, each of which otherwise
+   surfaces a stage too late:
+   - **Grounds every name that claims to exist** — a field, route, component
+     or env var an AC cites as already there is grepped and carries its
+     `file:line`; what the feature will *create* is marked `NEW`.
+   - **Grounds absence claims too** — "no X exists yet, building it is in
+     scope" is checked with `find` over your asset dirs, not a code grep: an
+     unreferenced asset sits on disk with zero grep hits, and one `find` can
+     delete a whole work item from the spec.
+   - **Reads a linked design canvas *before* writing criteria** (`DesignSync`,
+     not `Artifact`), transcribing its values into the ACs — Pass 3 reads
+     `spec.md` and nothing else, so a number that lives only on the canvas is
+     invisible to review.
+   - **Runs a checkability pass** — every AC needs a manual observation *and*
+     a test. The four shapes that fail it (diff-only wording, test-only
+     behaviour, process claims, post-launch measurement) each have a fixed
+     rewording in the skill.
+
+   When a later stage finds a criterion wrong, the spec is amended **first**
+   and the change recorded under `## Decisions` in the same PR — never worked
+   around silently. The skill's routing table says who decides which kind of
+   defect.
 3. Plan mode; save the approved plan as `plan.md` in the intent dir.
 4. Implement; open the PR with the template, linking the intent dir.
 5. The automatic review checks correctness, security, and the diff against
@@ -223,6 +245,17 @@ template, but worth knowing:
   failure-notification step in **every** job that runs the script (a
   notification only in a downstream job never fires when the monitor itself
   crashes). A script that does init Sentry reports in full.
+- **An eval's `mustNotMatch` on an anti-pattern gets flakier the better your
+  config gets.** A well-taught agent *names* the anti-pattern in prose in
+  order to warn against it, which trips the forbidden regex on a correct
+  answer. Set `forbidCodeOnly` on those cases — the patterns then run against
+  fenced code (what the agent proposes you write), while `mustMatch` still
+  runs against the whole response, so a real regression still fails.
+- **The review's `--max-turns` is not a cost bound.** REVIEW.md's passes scale
+  with PR size, so a low cap both truncates reviews mid-pass and — worse —
+  fails the check *after* a complete review, with findings posted and no diff
+  change able to turn it green. The template ships 80; `timeout-minutes` is
+  the real bound.
 - **Usage limits**: CI reviews share your Pro/Max usage windows with local
   sessions. The workflows mitigate with concurrency-cancel, draft/bot/label
   skips, and Sonnet (not Opus). If CI starves local work, switch the review
